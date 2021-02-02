@@ -1,0 +1,9 @@
+#ifndef GEV_TEST_CONFIG_H
+#define GEV_TEST_CONFIG_H
+
+
+#define GEV_TEST_VERSION_MAJOR @gev_test_VERSION_MAJOR@
+#define GEV_TEST_VERSION_MINOR @gev_test_VERSION_MINOR@
+#define GEV_TEST_VERSION "@gev_test_VERSION_MAJOR@.@gev_test_VERSION_MINOR"
+
+#endif

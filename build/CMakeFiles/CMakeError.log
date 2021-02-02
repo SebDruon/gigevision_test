@@ -1,0 +1,42 @@
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/seb/devel/gigevision_test/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_d6a14/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_d6a14.dir/build.make CMakeFiles/cmTC_d6a14.dir/build
+gmake[1] : on entre dans le répertoire « /home/seb/devel/gigevision_test/build/CMakeFiles/CMakeTmp »
+Building C object CMakeFiles/cmTC_d6a14.dir/src.c.o
+/usr/bin/cc   -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_d6a14.dir/src.c.o   -c /home/seb/devel/gigevision_test/build/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_d6a14
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d6a14.dir/link.txt --verbose=1
+/usr/bin/cc  -DCMAKE_HAVE_LIBC_PTHREAD    -rdynamic CMakeFiles/cmTC_d6a14.dir/src.c.o  -o cmTC_d6a14 
+/usr/lib/gcc/x86_64-pc-linux-gnu/9.3.0/../../../../x86_64-pc-linux-gnu/bin/ld : CMakeFiles/cmTC_d6a14.dir/src.c.o : dans la fonction « main » :
+src.c:(.text+0x3e) : référence indéfinie vers « pthread_create »
+/usr/lib/gcc/x86_64-pc-linux-gnu/9.3.0/../../../../x86_64-pc-linux-gnu/bin/ld : src.c:(.text+0x4a) : référence indéfinie vers « pthread_detach »
+/usr/lib/gcc/x86_64-pc-linux-gnu/9.3.0/../../../../x86_64-pc-linux-gnu/bin/ld : src.c:(.text+0x56) : référence indéfinie vers « pthread_cancel »
+/usr/lib/gcc/x86_64-pc-linux-gnu/9.3.0/../../../../x86_64-pc-linux-gnu/bin/ld : src.c:(.text+0x67) : référence indéfinie vers « pthread_join »
+collect2: erreur: ld a retourné le statut de sortie 1
+gmake[1]: *** [CMakeFiles/cmTC_d6a14.dir/build.make:107: cmTC_d6a14] Error 1
+gmake[1] : on quitte le répertoire « /home/seb/devel/gigevision_test/build/CMakeFiles/CMakeTmp »
+gmake: *** [Makefile:141: cmTC_d6a14/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+

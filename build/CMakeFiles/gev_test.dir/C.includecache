@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/seb/devel/gigevision_test/src/gev.h
+
+/home/seb/devel/gigevision_test/src/gvcp_thread.h
+sys/socket.h
+-
+arpa/inet.h
+-
+pthread.h
+-
+signal.h
+-
+time.h
+-
+gev.h
+/home/seb/devel/gigevision_test/src/gev.h
+
+/home/seb/devel/gigevision_test/src/main.c
+stdio.h
+-
+unistd.h
+-
+gvcp_thread.h
+/home/seb/devel/gigevision_test/src/gvcp_thread.h
+
