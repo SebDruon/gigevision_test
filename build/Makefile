@@ -189,6 +189,33 @@ gev_test/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gev_test.dir/build.make CMakeFiles/gev_test.dir/build
 .PHONY : gev_test/fast
 
+src/gigevision.o: src/gigevision.c.o
+
+.PHONY : src/gigevision.o
+
+# target to build an object file
+src/gigevision.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gev_test.dir/build.make CMakeFiles/gev_test.dir/src/gigevision.c.o
+.PHONY : src/gigevision.c.o
+
+src/gigevision.i: src/gigevision.c.i
+
+.PHONY : src/gigevision.i
+
+# target to preprocess a source file
+src/gigevision.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gev_test.dir/build.make CMakeFiles/gev_test.dir/src/gigevision.c.i
+.PHONY : src/gigevision.c.i
+
+src/gigevision.s: src/gigevision.c.s
+
+.PHONY : src/gigevision.s
+
+# target to generate assembly for a file
+src/gigevision.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gev_test.dir/build.make CMakeFiles/gev_test.dir/src/gigevision.c.s
+.PHONY : src/gigevision.c.s
+
 src/gvcp_thread.o: src/gvcp_thread.c.o
 
 .PHONY : src/gvcp_thread.o
@@ -256,6 +283,9 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... gev_test"
+	@echo "... src/gigevision.o"
+	@echo "... src/gigevision.i"
+	@echo "... src/gigevision.s"
 	@echo "... src/gvcp_thread.o"
 	@echo "... src/gvcp_thread.i"
 	@echo "... src/gvcp_thread.s"

@@ -1,20 +1,6 @@
-#ifndef GVCP_H
-#define GVCP_H
+#ifndef GIGEVISON_CMD_H
+#define GIGEVISION_CMD_H
 
-typedef struct {
-  uint8_t magic ;
-  uint8_t flag  ;
-  uint16_t command ;
-  uint16_t length ;
-  uint16_t req_id ;
-} gvcp_header_t ;
-
-typedef struct {
-    uint16_t status ;
-    uint16_t acknowledge ;
-    uint16_t length ;
-    uint16_t ack_id ;
-} gvcp_header_ack_t ;
 
 #define DISCOVERY_CMD 0x0002
 #define DISCOVERY_ACK 0x0003

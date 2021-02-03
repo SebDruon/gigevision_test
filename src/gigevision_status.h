@@ -1,5 +1,5 @@
-#ifndef GEV_H
-#define GEV_H
+#ifndef GIGEVISION_STATUS_H
+#define GIGEVISION_STATUS_H
 
 typedef enum {
      GEV_STATUS_SUCCESS         = 0x0000 ,

@@ -1,25 +1,25 @@
+#include <errno.h>
+#include <math.h>
+#include <poll.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <math.h>
-#include <poll.h>
-
-#include <cyan/common/error.h>
 
 #include "gvcp_thread.h"
-#include "gvcp.h"
+#include "gigevision.h"
+#include "gigevision_cmd.h"
+#include "gigevision_status.h"
 
 static void* heartbeat_fct( void* arg ) ;
 
-int gvcp_transaction( int socket_fd , int retries, int timeout,
-                      uint8_t flags, uint16_t cmd, uint16_t cmd_length, uint16_t req_id, void* cmd_data, 
-                      uint16_t* status, uint16_t* ack, uint16_t* ack_length, uint16_t* ack_id, void* ack_data ) ;
-
 gvcp_thread_t* gvcp_create( const char* cam_ip, uint16_t port) {
-    
-    gvcp_thread_t* tmp = malloc( sizeof(gvcp_thread_t) ) ;
+    int res ;
+    gvcp_thread_t* tmp ;
+    tmp = malloc( sizeof(gvcp_thread_t) ) ;
     if ( tmp == NULL ) {
-        CYAN_ERROR( ERR_MALLOC ) ;
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
         return NULL ;
     }
 
@@ -28,21 +28,24 @@ gvcp_thread_t* gvcp_create( const char* cam_ip, uint16_t port) {
     tmp->sockfd = socket( AF_INET, SOCK_DGRAM, 0) ; 
     tmp->cam_addr.sin_family = AF_INET; 
     tmp->cam_addr.sin_port = htons(port); 
-    if(inet_pton(AF_INET, cam_ip, &(tmp->cam_addr.sin_addr))<=0) { 
-        CYAN_ERROR( ERR_INVALID_ARG ) ; 
+    
+    res=inet_pton(AF_INET, cam_ip, &(tmp->cam_addr.sin_addr));
+    if(res==-1) { 
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
         return NULL ; 
     } 
-    if(connect(tmp->sockfd, (struct sockaddr *)&(tmp->cam_addr), sizeof(tmp->cam_addr)) < 0) {
-        CYAN_ERROR( ERR_NOPE ) ; 
+    res=connect(tmp->sockfd, (struct sockaddr *)&(tmp->cam_addr), sizeof(tmp->cam_addr));
+    if(res==-1) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
         return NULL ;
     } 
 
     // Mutex creation
     
-    if(pthread_mutex_init(&(tmp->lock), NULL) != 0) { 
-        CYAN_ERROR( ERR_NOPE ) ; 
-        return NULL ; 
-    } 
+    pthread_mutex_init(&(tmp->lock), NULL) ;
+    
     // Init var
 
     tmp->request_id = 1 ;
@@ -51,12 +54,19 @@ gvcp_thread_t* gvcp_create( const char* cam_ip, uint16_t port) {
     tmp->heartbeat_period = 200e6 ;
     tmp->heartbeat_looptime = 20e3 ;
     tmp->heartbeat_done = 0 ;
-    clock_gettime( CLOCK_REALTIME, &(tmp->timestamp) ) ;
+    res=clock_gettime( CLOCK_REALTIME, &(tmp->timestamp) ) ;
+    if(res==-1) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
+        return NULL ;
+    } 
 
     // Init and start heartbeat thread
-    if ( pthread_create ( &(tmp->heartbeat), NULL,
-                          heartbeat_fct, (void *) tmp ) == 0 ) {
-        CYAN_ERROR( ERR_NOPE ) ; 
+    res = pthread_create ( &(tmp->heartbeat), NULL,
+                          heartbeat_fct, (void *) tmp ) ;
+    if ( res != 0 ){
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
         return NULL ; 
     }
     
@@ -84,7 +94,7 @@ static void* heartbeat_fct( void* arg ) {
     gvcp_thread_t* gvcp ; 
     struct timespec now ;
     long elapsed_time ;
-    uint32_t ccp_register = htonl(0x0A00) ;
+    int res ;
 
     gvcp = (gvcp_thread_t*) arg ;
     while( !gvcp->heartbeat_done ) {
@@ -95,21 +105,9 @@ static void* heartbeat_fct( void* arg ) {
         if( elapsed_time < 0 )
             elapsed_time += 1e9 ;
         if ( elapsed_time > gvcp->heartbeat_period ) {
-            
-            // Send READREG
-              
-             
-             uint16_t status ;
-             uint16_t ack ;
-             uint16_t ack_length = 4 ;
-             uint16_t ack_id ;
-             unsigned char ack_data[255] ;
-
-             gvcp_transaction( gvcp->sockfd, gvcp->retries, gvcp->timeout,
-                                 0x01, READREG_CMD, sizeof(ccp_register), gvcp->request_id, &ccp_register, 
-                                 &status, &ack, &ack_length, &ack_id, ack_data ) ;
-
-            clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
+            res = send_heartbeat( gvcp->sockfd, 0, gvcp->timeout, gvcp->request_id) ;
+            if (res == 0 )
+                clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
             gvcp->request_id++ ;
             if ( gvcp->request_id == 0 )
                 gvcp->request_id = 1 ;
@@ -119,136 +117,203 @@ static void* heartbeat_fct( void* arg ) {
     return NULL ;
 }
 
-
-
-int gvcp_send_cmd( int socket_fd, 
-                    uint8_t flags, uint16_t command, uint16_t length, uint16_t req_id, void* data ) {
-        unsigned char packet[548] ;
-        gvcp_header_t* header ;
-        ssize_t ret ;
-        header = (gvcp_header_t*) packet ;
-        header->magic = 0x42 ;
-        header->flag  = flags ;
-        header->command = htons(command) ;
-        header->length = htons(length) ;
-        header->req_id = htons(req_id) ;
-        if ( length != 0 ) {
-            memcpy( packet+sizeof(gvcp_header_t), data, length ) ;
-        }
-        ret = send( socket_fd, packet, sizeof(gvcp_header_t)+length, 0 ) ;
-        if ( ret != sizeof(gvcp_header_t)+length ) {
-                CYAN_ERROR( ERR_NOPE ) ; 
-                return -1 ;  
-        }
-        return 0 ;
+int gvcp_readreg( gvcp_thread_t* gvcp, int nb, uint32_t* registers, uint32_t* values ) {
+    int res ;
+    int i ;
+    uint16_t status ;
+    uint16_t ack ;
+    uint16_t ack_length ;
+    uint16_t ack_id ;
+    uint32_t* data ;
+    size_t data_size ;
+    data_size = nb*sizeof(uint32_t);
+    ack_length = nb*sizeof(uint32_t) ;
+    data = malloc( data_size ) ;
+    if ( data == NULL ) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
+        return -1 ;
+    }
+    for (i=0;i<nb;i++)
+        data[i]=htonl(registers[i]);
+    pthread_mutex_lock( &(gvcp->lock) );
+    res = gvcp_transaction( gvcp->sockfd , gvcp->retries, gvcp->timeout,
+                            0x01, READREG_CMD, data_size, gvcp->request_id, data, 
+                            &status, &ack, &ack_length, &ack_id, values ) ;
+    if (res == 0 )
+        clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
+        gvcp->request_id++ ;
+    if ( gvcp->request_id == 0 )
+        gvcp->request_id = 1 ;
+   pthread_mutex_unlock( &(gvcp->lock) );
+   if ( res != 0 ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readreg(): No reply.\n") ;
+        return -1 ;
+   }
+   if ( status != GEV_STATUS_SUCCESS ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readreg(): Ack received with status %d \n", status ) ;
+        return -1 ;
+   }
+   if ( ack != READREG_ACK ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readreg(): Received ack has wrong type. Received %d \n", ack ) ;
+        return -1 ;
+   }
+   for (i=0;i<nb;i++)
+        values[i]=ntohl(values[i]);
+   free(data);
+   return 0 ;
 }
 
-int gvcp_rcv_ack( int socket_fd, int timeout,
-                    uint16_t* status, uint16_t* ack, uint16_t* length, uint16_t* ack_id, void* data ) {
-
-        unsigned char packet_ack[548] ;
-        gvcp_header_ack_t* header_ack ;
-        struct pollfd fd;
-        fd.fd = socket_fd;
-        fd.events = POLLIN;
-        int res ;
-        ssize_t ret ;
-        
-        res = poll(&fd, 1, timeout);   
-        if (res == 0) {                     // timeout reached
-            CYAN_ERROR( ERR_NOPE ) ;
-            return -1 ;
-        }
-        if (res == -1) {                    // Error in poll
-            CYAN_ERROR( ERR_NOPE ) ;
-            return -2 ;
-        }  
-       
-        ret = recv( socket_fd, packet_ack, sizeof(gvcp_header_ack_t) + *length, 0 ) ;
-        if ( ret != sizeof(gvcp_header_ack_t)+ *length ) {
-            CYAN_ERROR( ERR_NOPE ) ;
-            return -3 ;
-        }
-            
-        header_ack = ( gvcp_header_ack_t* ) packet_ack ;
-        
-        *status = ntohs( header_ack->status) ;
-        *ack = ntohs( header_ack->acknowledge) ;
-        *length = ntohs( header_ack->length ) ;
-        *ack_id = ntohs( header_ack->ack_id ) ;
-
-        if ( length != 0 ) 
-            memcpy( data, header_ack + sizeof(gvcp_header_ack_t), *length ) ;
-
-        return 0 ;
+int gvcp_writereg( gvcp_thread_t* gvcp, int nb, uint32_t* registers, uint32_t* values, uint16_t* result ) {
+    int res ;
+    int i ;
+    uint16_t status ;
+    uint16_t ack ;
+    uint16_t ack_id ;
+    uint16_t ack_length ;
+    uint16_t ack_data[2] ;
+    uint32_t* data ;
+    size_t data_size ;
+    data_size = 2*nb*sizeof(uint32_t) ;
+    data = malloc( data_size ) ;
+    if ( data == NULL ) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
+        return -1 ;
+    }
+    for (i=0;i<nb;i++){
+        data[2*i]=htonl(registers[i]);
+        data[2*i+1]=htonl(values[i]);
+    }
+    ack_length = sizeof(ack_data);
+    pthread_mutex_lock( &(gvcp->lock) );
+    res = gvcp_transaction( gvcp->sockfd , gvcp->retries, gvcp->timeout,
+                            0x01, WRITEREG_CMD, data_size, gvcp->request_id, data, 
+                            &status, &ack, &ack_length, &ack_id, &ack_data ) ;
+    if (res == 0 )
+        clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
+        gvcp->request_id++ ;
+    if ( gvcp->request_id == 0 )
+        gvcp->request_id = 1 ;
+   pthread_mutex_unlock( &(gvcp->lock) );
+   if ( res != 0 ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writereg(): No reply.\n") ;
+        return -1 ;
+   }
+   if ( status != GEV_STATUS_SUCCESS ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writereg(): Ack received with status %d \n", status ) ;
+        return -1 ;
+   }
+   if ( ack != WRITEREG_ACK ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writereg(): Received ack has wrong type. Received %d \n", ack ) ;
+        return -1 ;
+   }
+   *result=ntohs(ack_data[1]);
+   free(data) ;
+   return 0 ;
 }
 
+int gvcp_readmem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data ) {
+    int res ;
+    int i ;
+    uint16_t status ;
+    uint16_t ack ;
+    uint16_t ack_id ;
+    uint16_t data_cmd[4] ;
+    uint8_t* data_ack ;
+    uint16_t data_ack_size ;
+    ((uint32_t*)data_cmd)[0]=htonl(address) ;
+    data_cmd[2] = 0 ;
+    data_cmd[3] = htons(bytes);
+    data_ack_size = 4 + bytes ;
+    data_ack = malloc( data_ack_size ) ;
+    if ( data_ack == NULL ) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
+        return -1 ;
+    }
+    pthread_mutex_lock( &(gvcp->lock) );
+    res = gvcp_transaction( gvcp->sockfd , gvcp->retries, gvcp->timeout,
+                            0x01, READMEM_CMD, 4*sizeof(uint16_t), gvcp->request_id, data_cmd, 
+                            &status, &ack, &data_ack_size, &ack_id, data_ack ) ;
+    if (res == 0 )
+        clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
+        gvcp->request_id++ ;
+    if ( gvcp->request_id == 0 )
+        gvcp->request_id = 1 ;
+   pthread_mutex_unlock( &(gvcp->lock) );
+   if ( res != 0 ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readmem(): No reply.\n") ;
+        return -1 ;
+   }
+   if ( status != GEV_STATUS_SUCCESS ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readmem(): Ack received with status %d \n", status ) ;
+        return -1 ;
+   }
+   if ( ack != READMEM_ACK ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_readmem(): Received ack has wrong type. Received %d \n", ack ) ;
+        return -1 ;
+   }
+   memcpy(data, data_ack+4, bytes ) ;
+   free(data_ack) ;
+   return 0 ;
+}
 
-int gvcp_transaction( int socket_fd , int retries, int timeout,
-                      uint8_t flags, uint16_t cmd, uint16_t cmd_length, uint16_t req_id, void* cmd_data, 
-                      uint16_t* status, uint16_t* ack, uint16_t* ack_length, uint16_t* ack_id, void* ack_data ) {
+int gvcp_writemem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data, uint16_t* result ) {
+    int res ; 
+    uint16_t status ;
+    uint16_t ack ;
+    uint16_t ack_id ;
+    uint8_t* data_cmd ;
+    uint16_t data_cmd_size ;
+    uint16_t data_ack[2] ;
+    uint16_t data_ack_size ;
+    data_cmd_size = bytes + 4 ;
+    data_cmd = malloc( data_cmd_size ) ;
+    if ( data_cmd == NULL ) {
+        fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
+        fprintf(stderr, "%s\n",strerror(errno)) ;
+        return -1 ;
+    }
+    ((uint32_t*)data_cmd)[0]=htonl(address) ;
+    memcpy(data_cmd+4, data, bytes ) ;
+    data_ack_size = 4 ;
 
-        int res ;
-        int success = 0;
-        int counter = 0;
-        int done = 0 ;
-        int ack_desired = flags & 0x01 ;
-       
-        do {
-            
-            // envoi du paquet
-            
-            if ( gvcp_send_cmd( socket_fd, flags, cmd, cmd_length, req_id, cmd_data ) )  {
-                CYAN_ERROR( ERR_NOPE ) ;
-                return -1 ;
-            }
-            counter++ ;
-
-            // Reception de l'ACK
-
-            if ( !ack_desired ) { 
-                success = 1 ;
-                done = 1 ;
-            } else {
-                    
-                    int pending_ack ;
-                    pending_ack = 1 ;
-
-                    while( pending_ack ) {
-
-                        res = gvcp_rcv_ack( socket_fd, timeout, status, ack, ack_length, ack_id, ack_data ) ;
-                
-                        if( res == 0 ) {
-                            if (*ack_id == req_id ) {
-                                if ( *ack == PENDING_ACK ) {           // Recu un PENDING_ACK
-                                    pending_ack = 1 ;
-                                    timeout = 200 ;    //FIXME
-                                } else {                              // Recu un ack valide
-                                    pending_ack = 0 ;
-                                    success = 1 ;
-                                    done = 1 ;
-                                }
-                           } else {                                   // Recu un ack non valide
-                                pending_ack = 0 ;
-                                success = 0 ;
-                                done = 0 ;
-                           }
-                       } else if ( res == -1 ) {                      // Timeout sans reception
-                                pending_ack = 0 ;
-                                success = 0 ;
-                                done = 0 ;
-                       } else {                                       // Erreur
-                                CYAN_ERROR( ERR_NOPE ) ;
-                                return -2;
-                       }
-                 }
-
-            }
-                
-            if ( counter == retries ) 
-                done = 1 ;
-
-        } while (!done) ;   
-
-        return success ; 
+    pthread_mutex_lock( &(gvcp->lock) );
+    res = gvcp_transaction( gvcp->sockfd , gvcp->retries, gvcp->timeout,
+                            0x01, WRITEMEM_CMD, data_cmd_size, gvcp->request_id, data_cmd, 
+                            &status, &ack, &data_ack_size, &ack_id, data_ack ) ;
+    if (res == 0 )
+        clock_gettime( CLOCK_REALTIME, &(gvcp->timestamp));
+        gvcp->request_id++ ;
+    if ( gvcp->request_id == 0 )
+        gvcp->request_id = 1 ;
+   pthread_mutex_unlock( &(gvcp->lock) );
+   if ( res != 0 ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writemem(): No reply.\n") ;
+        return -1 ;
+   }
+   if ( status != GEV_STATUS_SUCCESS ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writemem(): Ack received with status %d \n", status ) ;
+        return -1 ;
+   }
+   if ( ack != WRITEMEM_ACK ) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "gvcp_writemem(): Received ack has wrong type. Received %d \n", ack ) ;
+        return -1 ;
+   }
+   free(data_cmd) ;
+   *result = ntohs(data_ack[1]) ;
+   return 0 ;
 }

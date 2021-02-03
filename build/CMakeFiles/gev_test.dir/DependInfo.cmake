@@ -4,6 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
+  "/home/seb/devel/gigevision_test/src/gigevision.c" "/home/seb/devel/gigevision_test/build/CMakeFiles/gev_test.dir/src/gigevision.c.o"
   "/home/seb/devel/gigevision_test/src/gvcp_thread.c" "/home/seb/devel/gigevision_test/build/CMakeFiles/gev_test.dir/src/gvcp_thread.c.o"
   "/home/seb/devel/gigevision_test/src/main.c" "/home/seb/devel/gigevision_test/build/CMakeFiles/gev_test.dir/src/main.c.o"
   )

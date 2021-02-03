@@ -4,10 +4,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h> 
-#include <signal.h> 
 #include <time.h> 
 
-#include "gev.h"
 
 typedef struct gvcp_thread_s {
     
@@ -38,12 +36,13 @@ typedef struct gvcp_thread_s {
 gvcp_thread_t* gvcp_create( const char* cam_ip, uint16_t port) ; 
 void gvcp_destroy( gvcp_thread_t * ) ;
 
+int gvcp_readreg( gvcp_thread_t*, int nb, uint32_t* registers, uint32_t* values ) ;
+int gvcp_writereg( gvcp_thread_t* gvcp, int nb, uint32_t* registers, uint32_t* values, uint16_t* result ) ;
+int gvcp_readmem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data_ack ) ;
+int gvcp_writemem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data, uint16_t* result ) ;
+
 //gev_status_t gvcp_discovery( gvcp_thread_t* ) ;
 //gev_status_t gvcp_forceip( gvcp_thread_t* ) ;
-//gev_status_t gvcp_readreg( gvcp_thread_t* ) ;
-//gev_status_t gvcp_writereg( gvcp_thread_t* ) ;
-//gev_status_t gvcp_readmem( gvcp_thread_t* ) ;
-//gev_status_t gvcp_writemem( gvcp_thread_t* ) ;
 
 // PACKETRESEND ?
 // PENDING ?

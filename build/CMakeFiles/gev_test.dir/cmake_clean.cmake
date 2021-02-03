@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/gev_test.dir/src/gigevision.c.o"
   "CMakeFiles/gev_test.dir/src/gvcp_thread.c.o"
   "CMakeFiles/gev_test.dir/src/main.c.o"
   "gev_test"
