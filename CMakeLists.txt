@@ -35,13 +35,18 @@ foreach(p LIB BIN HEADERS AR)
     endif()
 endforeach()
 
+### Options
+
+option(BUILD_TEST   "Build cyan_gigevision test" ON)
+
 
 ### Search for Lib/Headers
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
 
+find_package(Threads REQUIRED)
 find_package(cyan REQUIRED)
+find_package(cyan_hwcam REQUIRED)
 
 ### Configure a header file to pass some of the CMake settings
 ### to the source code
@@ -77,10 +82,21 @@ set_target_properties( cam_gigevision PROPERTIES VERSION ${cam_gigevision_VERSIO
 target_link_libraries ( "cam_gigevision" m rt
     Threads::Threads
     "${CYAN_LIBRARY}"
+    "${CYAN_HWCAM_LIBRARY}"
 )
 
 ### Install targets
 
 install( TARGETS "cam_gigevision"
     LIBRARY DESTINATION ${INSTALL_PLUGINS_PATH} )
+
+### tests
+
+if (BUILD_TEST)
+    enable_testing()
+endif()
+
+### plugins
+
+add_subdirectory(test)
 

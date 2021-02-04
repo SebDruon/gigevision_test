@@ -36,23 +36,28 @@ int init( void** cam_handle, va_list args ){
     uint16_t port ;
  	char* config_file ;
  	char* config_prefix ;
-	
+
+   
 	cam_ip = va_arg(args, char*) ;
-	port = va_arg(args, uint16_t) ;
+    port = (uint16_t) va_arg(args, int) ;
 	config_file = va_arg(args, char*) ;
 	config_prefix = va_arg(args, char*) ;
-
-	camera = (cam_gigevision_t*) malloc(sizeof(cam_gigevision_t*)) ;
-	*cam_handle = (void*) camera ;
+  
+	
+    printf("yop\n") ;
+    camera = (cam_gigevision_t*) malloc(sizeof(cam_gigevision_t)) ;
 	if (camera==NULL) {
             fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
             fprintf(stderr, "%s\n",strerror(errno)) ;
             return -1 ;
 	}
 
+	*cam_handle = (void*) camera ;
+
     camera->gvcp_channel = NULL ;
     camera->gvsp_channel = NULL ;
     camera->msg_channel  = NULL ;
+
 
     // Create control channel and start heartbeat
 
