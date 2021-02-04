@@ -5,6 +5,6 @@
 #define GEV_TEST_VERSION_MAJOR @cam_gigevision_VERSION_MAJOR@
 #define GEV_TEST_VERSION_MINOR @cam_gigevision_VERSION_MINOR@
 #define GEV_TEST_VERSION_PATCH @cam_gigevision_VERSION_PATCH@
-#define GEV_TEST_VERSION @cam_gigevision_VERSION_STRING@
+#define GEV_TEST_VERSION "@cam_gigevision_VERSION_STRING@"
 
 #endif
