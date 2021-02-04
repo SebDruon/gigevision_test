@@ -1,1 +1,0 @@
-/usr/bin/cc   -rdynamic CMakeFiles/gev_test.dir/src/gigevision.c.o CMakeFiles/gev_test.dir/src/gvcp_thread.c.o CMakeFiles/gev_test.dir/src/main.c.o  -o gev_test  -lm -lrt -lcyan -pthread 

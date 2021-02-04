@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <pthread.h> 
 #include <time.h> 
+#include <unistd.h> 
 
 
 typedef struct gvcp_thread_s {
@@ -41,11 +42,10 @@ int gvcp_writereg( gvcp_thread_t* gvcp, int nb, uint32_t* registers, uint32_t* v
 int gvcp_readmem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data_ack ) ;
 int gvcp_writemem( gvcp_thread_t* gvcp, uint32_t address, uint16_t bytes, uint8_t* data, uint16_t* result ) ;
 
-//gev_status_t gvcp_discovery( gvcp_thread_t* ) ;
-//gev_status_t gvcp_forceip( gvcp_thread_t* ) ;
-
-// PACKETRESEND ?
-// PENDING ?
+// DISCOVERY
+// FORCEIP
+// 
+// PACKETRESEND NOT IMPLEMENTED
 // ACTION ?
 
 
