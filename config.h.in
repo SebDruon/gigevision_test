@@ -2,8 +2,9 @@
 #define GEV_TEST_CONFIG_H
 
 
-#define GEV_TEST_VERSION_MAJOR @gev_test_VERSION_MAJOR@
-#define GEV_TEST_VERSION_MINOR @gev_test_VERSION_MINOR@
-#define GEV_TEST_VERSION "@gev_test_VERSION_MAJOR@.@gev_test_VERSION_MINOR"
+#define GEV_TEST_VERSION_MAJOR @cam_gigevision_VERSION_MAJOR@
+#define GEV_TEST_VERSION_MINOR @cam_gigevision_VERSION_MINOR@
+#define GEV_TEST_VERSION_PATCH @cam_gigevision_VERSION_PATCH@
+#define GEV_TEST_VERSION @cam_gigevision_VERSION_STRING@
 
 #endif

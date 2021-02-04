@@ -8,9 +8,12 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-project (gev_test)
-set (gev_test_VERSION_MAJOR 0)
-set (gev_test_VERSION_MINOR 1)
+project (cam_gigevision)
+set (cam_gigevision_VERSION_MAJOR 0)
+set (cam_gigevision_VERSION_MINOR 1)
+set (cam_gigevision_VERSION_PATCH 1)
+set (cam_gigevision_VERSION_STRING
+	${cam_gigevision_VERSION_MAJOR}.${cam_gigevision_VERSION_MINOR}.${cam_gigevision_VERSION_PATCH} )
 
 set( CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /lib /usr/lib /usr/local/lib )
 set( CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} /usr/include /usr/local/include )
@@ -20,6 +23,7 @@ set ( INSTALL_BIN_PATH bin )
 set ( INSTALL_LIB_PATH lib )
 set ( INSTALL_AR_PATH  lib )
 set ( INSTALL_HEADERS_PATH include )
+set ( INSTALL_PLUGINS_PATH share/cyan_hwcam )
 
 
 # Make relative paths absolute (needed later on)
@@ -64,17 +68,19 @@ file( GLOB src "src/*.c" )
 
 ### Main Target and linking
 
-add_executable( "gev_test" ${src} ${hdr} )
+add_library( "cam_gigevision" SHARED ${src} ${hdr} )
 
-target_link_libraries ( "gev_test" m rt
+set_target_properties( cam_gigevision PROPERTIES VERSION ${cam_gigevision_VERSION_STRING}
+         SOVERSION ${cam_gigevision_VERSION_MAJOR})
+
+
+target_link_libraries ( "cam_gigevision" m rt
     Threads::Threads
     "${CYAN_LIBRARY}"
 )
 
 ### Install targets
 
-install( TARGETS "gev_test"
-        RUNTIME DESTINATION ${INSTALL_BIN_PATH}  COMPONENT main
-        LIBRARY DESTINATION ${INSTALL_LIB_PATH}  COMPONENT main
-        ARCHIVE DESTINATION ${INSTALL_AR_PATH}   COMPONENT main )
+install( TARGETS "cam_gigevision"
+    LIBRARY DESTINATION ${INSTALL_PLUGINS_PATH} )
 
