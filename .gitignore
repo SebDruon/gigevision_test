@@ -11,4 +11,4 @@ CMakeFile
 *.lo
 
 build/*
-src/config.h
+src/config_cmake.h
