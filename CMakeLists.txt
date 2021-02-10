@@ -12,7 +12,7 @@ project (cam_gigevision)
 set (cam_gigevision_VERSION_MAJOR 0)
 set (cam_gigevision_VERSION_MINOR 1)
 set (cam_gigevision_VERSION_PATCH 1)
-set (cam_gigevision_VERSION_STRING
+set (cam_gigevision_VERSION
 	${cam_gigevision_VERSION_MAJOR}.${cam_gigevision_VERSION_MINOR}.${cam_gigevision_VERSION_PATCH} )
 
 set( CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /lib /usr/lib /usr/local/lib )
@@ -44,7 +44,9 @@ option(BUILD_TEST   "Build cyan_gigevision test" ON)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+find_package(libxml2 REQUIRED)
 find_package(Threads REQUIRED)
+find_package(libzip REQUIRED)
 find_package(cyan REQUIRED)
 find_package(cyan_hwcam REQUIRED)
 
@@ -63,26 +65,29 @@ include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/include"
 	             "${CMAKE_CURRENT_SOURCE_DIR}/src"
         	     "${CMAKE_CURRENT_BINARY_DIR}"
                  "${CMAKE_INSTALL_PREFIX}/include"
+                 "${LIBXML2_INCLUDE_DIRS}" 
 )
 
 
 ### File Lists
 
-file( GLOB hdr "src/*.h*" )
+file( GLOB hdr "src/*.h" )
 file( GLOB src "src/*.c" )
 
 ### Main Target and linking
 
 add_library( "cam_gigevision" SHARED ${src} ${hdr} )
 
-set_target_properties( cam_gigevision PROPERTIES VERSION ${cam_gigevision_VERSION_STRING}
+set_target_properties( cam_gigevision PROPERTIES VERSION ${cam_gigevision_VERSION}
          SOVERSION ${cam_gigevision_VERSION_MAJOR})
 
 
 target_link_libraries ( "cam_gigevision" m rt
     Threads::Threads
+    libzip::zip
     "${CYAN_LIBRARY}"
     "${CYAN_HWCAM_LIBRARY}"
+    "${LIBXML2_LIBRARIES}"
 )
 
 ### Install targets

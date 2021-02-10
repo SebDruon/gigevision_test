@@ -1,34 +1,15 @@
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <cyan/hwcam/plugin.h>
-#include <cyan/hwcam/modes.h>
-#include <cyan/common/error.h>
+#include <zip.h>
 
-#include "gvcp_thread.h"
-#include "gvsp_thread.h"
-#include "msg_thread.h"
+#include "cam_gigevision.h"
+#include "genicam_xml.h"
 
-typedef struct {
+int download_xml_from_mem( cam_gigevision_t* camera, char* url ) ;
 
-	gvcp_thread_t*	gvcp_channel ;
-	gvsp_thread_t*	gvsp_channel ;
-	msg_thread_t*	msg_channel ;
-	
-} cam_gigevision_t ;
-
-int init( void** cam_handle, va_list args ) ;
-int deinit( void* cam_handle) ;
-int get_available_modes( void* cam_handle, hw_mode_t** modes, int* nb_modes ) ;
-int get_serial( void* cam_handle, char** serial, size_t* serial_size ) ;
-int set_mode( void* cam_handle, int mode ) ;
-int get_mode( void* cam_handle, int* mode ) ;
-int start_acqui ( void* cam_handle ) ;
-int stop_acqui ( void* cam_handle ) ;
-int get_frame ( void* cam_handle, image_t* img ) ; 
-
-int load_config( cam_gigevision_t* camera, char* config_file, char* config_prefix ) ;
 
 int init( void** cam_handle, va_list args ){
     cam_gigevision_t* camera ;
@@ -36,15 +17,12 @@ int init( void** cam_handle, va_list args ){
     uint16_t port ;
  	char* config_file ;
  	char* config_prefix ;
-
    
 	cam_ip = va_arg(args, char*) ;
     port = (uint16_t) va_arg(args, int) ;
 	config_file = va_arg(args, char*) ;
 	config_prefix = va_arg(args, char*) ;
   
-	
-    printf("yop\n") ;
     camera = (cam_gigevision_t*) malloc(sizeof(cam_gigevision_t)) ;
 	if (camera==NULL) {
             fprintf(stderr, "Error %d in %s:%d\n", errno, __FILE__, __LINE__ ) ;
@@ -57,7 +35,6 @@ int init( void** cam_handle, va_list args ){
     camera->gvcp_channel = NULL ;
     camera->gvsp_channel = NULL ;
     camera->msg_channel  = NULL ;
-
 
     // Create control channel and start heartbeat
 
@@ -81,7 +58,7 @@ int init( void** cam_handle, va_list args ){
     }
     
     // Apply config if given
-
+/*
     if ( config_file != NULL ) {
         
         if( load_config( camera, config_file, config_prefix )) {
@@ -95,7 +72,7 @@ int init( void** cam_handle, va_list args ){
             return -1 ;
         }
     }
-
+*/
 	return ERR_OK ;
 }
 
@@ -107,6 +84,67 @@ int deinit( void* cam_handle){
 }
 
 int get_available_modes( void* cam_handle, hw_mode_t** modes, int* nb_modes ) {
+
+    cam_gigevision_t* camera ;
+    uint32_t reg ;
+    uint32_t value ;
+    uint16_t result ;
+    uint8_t  url[512] ;
+    unsigned char method[8] ;
+    int i ;
+
+    camera = (cam_gigevision_t*) cam_handle ;
+
+    reg = 0x0200 ;
+    if ( gvcp_readmem( camera->gvcp_channel, reg, 512, url ) ) {
+            fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+            fprintf(stderr, "Could not retrieve config URL\n") ;
+            return -1 ;
+    }
+    
+    for (i=0;i<8;i++) {
+        if (url[i]==':')
+            method[i]='\0' ;
+        else
+            method[i] = toupper( (unsigned char) url[i] ) ;
+    }
+    
+    if ((strcmp(method,"HTTP")==0)||(strcmp(method,"HTTPS")==0)) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "Retrieving xml file over http is not yet implemented\n") ;
+        return -1 ; // TODO
+    } else if (strcmp(method,"FILE")==0) {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "xml local file over is not yet implemented\n") ;
+        return -1 ; // TODO
+    } else if (strcmp(method,"LOCAL")==0) {
+       download_xml_from_mem( camera, url ) ; 
+    } else {
+        fprintf(stderr, "Error in %s:%d\n", __FILE__, __LINE__ ) ;
+        fprintf(stderr, "Could not retrieve parse configuration URL\n") ;
+        return -1 ; 
+    }
+    
+    // FIXME
+    genicam_t* genicam ;
+    int64_t width ; 
+    int64_t height ; 
+    int64_t pixelformat ; 
+    double  framerate ;
+
+    genicam = genicam_new( camera, "/home/seb/.cyan/cam_gigevision/config_xml/IMX290_M_AB631911A79AC8AC3F0960EA5C1332F5.xml" ) ;
+    width  = IInteger_GetValue( genicam, "Width") ;
+    height = IInteger_GetValue( genicam, "Height") ;
+    pixelformat = IEnumeration_GetIntValue( genicam, "PixelFormat") ;
+    framerate = IFloat_GetValue( genicam, "AcquisitionFrameRate" ) ;
+
+    printf("Width : %ld \n",width) ; 
+    printf("Height: %ld \n",height) ; 
+    printf("PixelFormat: %lx \n",pixelformat) ; 
+    printf("Framerate: %lf \n",framerate) ; 
+
+    genicam_del( genicam ) ;
+
     // TODO
     return 0 ;
 }
@@ -141,7 +179,4 @@ int get_frame ( void* cam_handle, image_t* img ) {
     return 0 ;
 }
 
-int load_config( cam_gigevision_t* camera, char* config_file, char* config_prefix ) {
-    // TODO
-    return 0 ; 
-}
+
