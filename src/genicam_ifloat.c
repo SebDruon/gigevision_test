@@ -1,4 +1,5 @@
 #include "genicam_xml.h"
+#include "genicam_formula.h"
 
 double getvalue_float(genicam_t*, xmlNode*) ;
 double getvalue_converter(genicam_t*, xmlNode*) ;
@@ -43,8 +44,12 @@ double getvalue_float(genicam_t* genicam, xmlNode* node) {
 double getvalue_converter(genicam_t* genicam, xmlNode* node) {
    xmlNode* valuenode ;
    xmlChar *key; 
-   uint64_t unscaled_value = 0 ;
-   float scaled_value = 0.0 ;
+   xmlChar *formula; 
+   xmlChar *from;
+   double unscaled_value = 0 ;
+   double scaled_value = 0.0 ;
+
+   // Recherche de la pValue 
 
    valuenode = node_search( node->children, "pValue" ) ;
    if ( valuenode == NULL ) {
@@ -53,12 +58,26 @@ double getvalue_converter(genicam_t* genicam, xmlNode* node) {
    }
    
    key = xmlNodeGetContent( valuenode );
-   unscaled_value = IInteger_GetValue( genicam, key )  ;
+   unscaled_value = (double) IInteger_GetValue( genicam, key )  ;
  
-   fprintf(stderr," --> %ld \n", unscaled_value ) ;
+   // Recherche du FormulaFrom
 
-   // TODO
-   // reste a parser le FormulaFrom
+   valuenode = node_search( node->children, "FormulaFrom" ) ;
+   if ( valuenode == NULL ) {
+        fprintf(stderr, "[Converter] No FormulaFrom found\n") ;
+        return 0.0 ;
+   }
+   
+   formula = xmlNodeGetContent( valuenode );
+ 
+   fprintf(stderr," Value--> %lf \n", unscaled_value ) ;
+   fprintf(stderr," Formula--> %s \n", formula ) ;
+   
+   // Application de la formule
+    from=malloc(5);
+    sprintf(from,"TO") ;
+    scaled_value = evaluate_formula(formula, 1, &from, &unscaled_value) ;
+    free(from);
 
    return scaled_value ;
 }
